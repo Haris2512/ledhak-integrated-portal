@@ -3,28 +3,22 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreLoanRequest;
 use App\Models\InventoryLog;
 use App\Models\Item;
 use App\Models\LoanRecord;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class LoanController extends Controller
 {
     /**
-     * Record loan details and update item status to 'Dipinjam'.
+     * Record loan details, update item status to 'Dipinjam', and insert log entries within a DB transaction.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreLoanRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'item_id' => ['required', 'exists:items,id'],
-            'borrower_name' => ['required', 'string', 'max:255'],
-            'borrower_phone' => ['required', 'string', 'max:50'],
-            'loan_date' => ['required', 'date'],
-            'return_date' => ['nullable', 'date', 'after_or_equal:loan_date'],
-        ]);
+        $validated = $request->validated();
 
         $item = Item::findOrFail($validated['item_id']);
 
@@ -35,10 +29,10 @@ class LoanController extends Controller
         }
 
         $loanRecord = DB::transaction(function () use ($validated, $item, $request) {
-            // Update item status to 'Dipinjam'
+            // 1. Update item status to 'Dipinjam'
             $item->update(['status' => 'Dipinjam']);
 
-            // Create circulation loan record
+            // 2. Create circulation loan record
             $loan = LoanRecord::create([
                 'item_id' => $item->id,
                 'borrower_name' => $validated['borrower_name'],
@@ -48,7 +42,7 @@ class LoanController extends Controller
                 'status' => 'Active',
             ]);
 
-            // Create inventory log
+            // 3. Create inventory audit log
             InventoryLog::create([
                 'item_id' => $item->id,
                 'user_id' => $request->user()->id,
@@ -60,7 +54,7 @@ class LoanController extends Controller
         });
 
         return response()->json([
-            'message' => 'Peminjaman berhasil dicatat dan status barang diubah menjadi Dipinjam.',
+            'message' => 'Peminjaman berhasil dicatat, status barang diubah menjadi Dipinjam, dan log inventaris disimpan.',
             'data' => $loanRecord->load('item'),
         ], 201);
     }

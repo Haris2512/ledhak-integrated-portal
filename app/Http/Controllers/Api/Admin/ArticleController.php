@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreArticleRequest;
+use App\Http\Requests\Admin\UpdateArticleRequest;
 use App\Models\Article;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class ArticleController extends Controller
 {
@@ -22,20 +23,24 @@ class ArticleController extends Controller
     }
 
     /**
-     * Store a newly created article.
+     * Store a newly created article with an automatically generated unique slug.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreArticleRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', 'unique:articles,slug'],
-            'content' => ['required', 'string'],
-            'image_path' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', Rule::in(['Draft', 'Published'])],
-        ]);
+        $validated = $request->validated();
 
+        // Automatically generate unique slug from title if empty
         if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['title']).'-'.Str::random(5);
+            $baseSlug = Str::slug($validated['title']);
+            $slug = $baseSlug;
+            $count = 1;
+
+            while (Article::where('slug', $slug)->exists()) {
+                $slug = "{$baseSlug}-{$count}";
+                $count++;
+            }
+
+            $validated['slug'] = $slug;
         }
 
         $article = Article::create($validated);
@@ -59,18 +64,22 @@ class ArticleController extends Controller
     /**
      * Update specified article.
      */
-    public function update(Request $request, Article $article): JsonResponse
+    public function update(UpdateArticleRequest $request, Article $article): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'slug' => ['sometimes', 'required', 'string', 'max:255', Rule::unique('articles', 'slug')->ignore($article->id)],
-            'content' => ['sometimes', 'required', 'string'],
-            'image_path' => ['nullable', 'string', 'max:255'],
-            'status' => ['sometimes', 'required', Rule::in(['Draft', 'Published'])],
-        ]);
+        $validated = $request->validated();
 
+        // Generate unique slug if title is modified and slug is not explicitly provided
         if (isset($validated['title']) && empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['title']).'-'.Str::random(5);
+            $baseSlug = Str::slug($validated['title']);
+            $slug = $baseSlug;
+            $count = 1;
+
+            while (Article::where('slug', $slug)->where('id', '!=', $article->id)->exists()) {
+                $slug = "{$baseSlug}-{$count}";
+                $count++;
+            }
+
+            $validated['slug'] = $slug;
         }
 
         $article->update($validated);

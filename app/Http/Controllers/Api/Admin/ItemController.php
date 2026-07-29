@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreItemRequest;
+use App\Http\Requests\Admin\UpdateItemRequest;
 use App\Models\InventoryLog;
 use App\Models\Item;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class ItemController extends Controller
 {
@@ -23,27 +25,33 @@ class ItemController extends Controller
 
     /**
      * Store a newly created item in inventory.
+     * Automatically generates a unique item_code and QR code URL.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreItemRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'item_code' => ['required', 'string', 'max:50', 'unique:items,item_code'],
-            'name' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'max:100'],
-            'description' => ['nullable', 'string'],
-            'status' => ['nullable', Rule::in(['Tersedia', 'Dipinjam', 'Perbaikan'])],
-            'qr_code_url' => ['nullable', 'string', 'max:255'],
-            'photo_path' => ['nullable', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
+
+        // 1. Generate unique item_code if not provided
+        if (empty($validated['item_code'])) {
+            do {
+                $generatedCode = 'INV-LDK-' . strtoupper(Str::random(6));
+            } while (Item::where('item_code', $generatedCode)->exists());
+
+            $validated['item_code'] = $generatedCode;
+        }
+
+        // 2. Generate QR Code URL based on public scanner endpoint
+        $scanUrl = url('/api/public/inventory/' . $validated['item_code']);
+        $validated['qr_code_url'] = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($scanUrl);
 
         $item = Item::create($validated);
 
-        // Audit log creation
+        // Audit log entry
         InventoryLog::create([
             'item_id' => $item->id,
             'user_id' => $request->user()->id,
             'action' => 'CREATED',
-            'notes' => 'Barang baru berhasil ditambahkan ke sistem inventaris.',
+            'notes' => "Barang [{$item->item_code}] {$item->name} berhasil ditambahkan ke inventaris dengan QR code otomatis.",
         ]);
 
         return response()->json([
@@ -67,17 +75,15 @@ class ItemController extends Controller
     /**
      * Update specified item in inventory.
      */
-    public function update(Request $request, Item $item): JsonResponse
+    public function update(UpdateItemRequest $request, Item $item): JsonResponse
     {
-        $validated = $request->validate([
-            'item_code' => ['sometimes', 'required', 'string', 'max:50', Rule::unique('items', 'item_code')->ignore($item->id)],
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'category' => ['sometimes', 'required', 'string', 'max:100'],
-            'description' => ['nullable', 'string'],
-            'status' => ['sometimes', 'required', Rule::in(['Tersedia', 'Dipinjam', 'Perbaikan'])],
-            'qr_code_url' => ['nullable', 'string', 'max:255'],
-            'photo_path' => ['nullable', 'string', 'max:255'],
-        ]);
+        $validated = $request->validated();
+
+        // Regenerate QR code if item_code is updated
+        if (isset($validated['item_code']) && $validated['item_code'] !== $item->item_code) {
+            $scanUrl = url('/api/public/inventory/' . $validated['item_code']);
+            $validated['qr_code_url'] = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($scanUrl);
+        }
 
         $oldStatus = $item->status;
         $item->update($validated);
