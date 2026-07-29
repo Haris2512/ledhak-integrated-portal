@@ -49,6 +49,7 @@ Route::prefix('auth')->group(function () {
 */
 Route::prefix('admin')->middleware('auth:sanctum')->group(function () {
     // Manage items & status updates
+    Route::patch('/items/{item}/status', [AdminItemController::class, 'updateStatus']);
     Route::apiResource('items', AdminItemController::class);
 
     // Record new loan & return borrowed item

@@ -10,6 +10,7 @@ use App\Models\Item;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
@@ -102,6 +103,33 @@ class ItemController extends Controller
 
         return response()->json([
             'message' => 'Barang inventaris berhasil diperbarui.',
+            'data' => $item,
+        ]);
+    }
+
+    /**
+     * Update item status directly (e.g. 'Tersedia', 'Dipinjam', 'Perbaikan').
+     */
+    public function updateStatus(Request $request, Item $item): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', Rule::in(['Tersedia', 'Dipinjam', 'Perbaikan'])],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $oldStatus = $item->status;
+        $item->update(['status' => $validated['status']]);
+
+        // Audit log entry
+        InventoryLog::create([
+            'item_id' => $item->id,
+            'user_id' => $request->user()->id,
+            'action' => 'STATUS_CHANGE',
+            'notes' => $validated['notes'] ?? "Status barang diubah dari {$oldStatus} ke {$validated['status']}.",
+        ]);
+
+        return response()->json([
+            'message' => "Status barang {$item->name} berhasil diubah menjadi {$validated['status']}.",
             'data' => $item,
         ]);
     }
