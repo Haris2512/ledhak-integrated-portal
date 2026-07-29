@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreLoanRequest;
 use App\Models\InventoryLog;
 use App\Models\Item;
 use App\Models\LoanRecord;
+use App\Services\GoogleSheetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -53,8 +54,19 @@ class LoanController extends Controller
             return $loan;
         });
 
+        // 4. Sync to Google Sheets via Apps Script Web App
+        GoogleSheetService::syncLoanRecord([
+            'item_code' => $item->item_code,
+            'item_name' => $item->name,
+            'borrower_name' => $loanRecord->borrower_name,
+            'borrower_phone' => $loanRecord->borrower_phone,
+            'loan_date' => $loanRecord->loan_date,
+            'return_date' => $loanRecord->return_date,
+            'status' => $loanRecord->status,
+        ]);
+
         return response()->json([
-            'message' => 'Peminjaman berhasil dicatat, status barang diubah menjadi Dipinjam, dan log inventaris disimpan.',
+            'message' => 'Peminjaman berhasil dicatat, status barang diubah menjadi Dipinjam, dan log disinkronkan.',
             'data' => $loanRecord->load('item'),
         ], 201);
     }
