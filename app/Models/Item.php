@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Item extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'item_code',
+        'name',
+        'category',
+        'description',
+        'status',
+        'qr_code_url',
+        'photo_path',
+    ];
+
+    /**
+     * Get the loan records for the item.
+     */
+    public function loanRecords(): HasMany
+    {
+        return $this->hasMany(LoanRecord::class);
+    }
+
+    /**
+     * Get the inventory logs for the item.
+     */
+    public function inventoryLogs(): HasMany
+    {
+        return $this->hasMany(InventoryLog::class);
+    }
+}
