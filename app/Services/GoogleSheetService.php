@@ -15,12 +15,14 @@ class GoogleSheetService
         $webAppUrl = config('services.google_apps_script.url');
 
         if (empty($webAppUrl) || str_contains($webAppUrl, 'YOUR_DEPLOYMENT_ID')) {
-            Log::info('Google Apps Script URL is not fully configured in .env. Skipping Google Sheets sync.');
+            Log::info('Google Apps Script URL is not fully configured in .env.');
             return false;
         }
 
         try {
-            $response = Http::timeout(5)
+            $response = Http::withoutVerifying()
+                ->timeout(15)
+                ->asJson()
                 ->post($webAppUrl, [
                     'type' => 'LOAN_RECORD',
                     'timestamp' => now()->toIso8601String(),
@@ -32,6 +34,10 @@ class GoogleSheetService
                     'return_date' => $loanData['return_date'] ?? '-',
                     'status' => $loanData['status'] ?? 'Active',
                 ]);
+
+            if (! $response->successful()) {
+                Log::error('Google Sheet Sync HTTP Error: ' . $response->status() . ' - ' . $response->body());
+            }
 
             return $response->successful();
         } catch (\Throwable $e) {
@@ -52,7 +58,9 @@ class GoogleSheetService
         }
 
         try {
-            $response = Http::timeout(5)
+            $response = Http::withoutVerifying()
+                ->timeout(15)
+                ->asJson()
                 ->post($webAppUrl, [
                     'type' => 'INVENTORY_LOG',
                     'timestamp' => now()->toIso8601String(),

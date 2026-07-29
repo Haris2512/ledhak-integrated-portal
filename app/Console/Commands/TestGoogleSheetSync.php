@@ -26,11 +26,13 @@ class TestGoogleSheetSync extends Command
      */
     public function handle(): int
     {
-        $this->info('Mengirim data simulasi peminjaman ke Google Sheets...');
+        $url = config('services.google_apps_script.url');
+        $this->info("Mengirim data simulasi peminjaman ke Google Sheets...");
+        $this->comment("Target URL: {$url}");
 
         $success = GoogleSheetService::syncLoanRecord([
             'item_code' => 'INV-LDK-001',
-            'item_name' => 'Proyektor Epson EB-X400 (Tes)',
+            'item_name' => 'Proyektor Epson EB-X400 (Tes Live)',
             'borrower_name' => 'Penguji Sistem',
             'borrower_phone' => '081234567890',
             'loan_date' => now()->toDateString(),
@@ -42,7 +44,10 @@ class TestGoogleSheetSync extends Command
             $this->info('✅ SUKSES: Data simulasi berhasil dikirim ke Google Sheets!');
             return Command::SUCCESS;
         } else {
-            $this->warn('⚠️ PERHATIAN: Data belum terkirim. Pastikan GOOGLE_APPS_SCRIPT_URL di .env sudah diisi dengan URL Web App Apps Script Anda.');
+            $this->error('❌ GAGAL: Data belum terkirim ke Google Sheets.');
+            $this->line('Silakan periksa storage/logs/laravel.log atau pastikan di Apps Script:');
+            $this->line('1. Sudah menambahkan fungsi doGet dan doPost.');
+            $this->line('2. Pengaturan Deploy > Who has access diatur ke "Anyone" (Siapa saja).');
             return Command::FAILURE;
         }
     }
