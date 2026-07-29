@@ -51,8 +51,9 @@ Route::prefix('admin')->middleware('auth:sanctum')->group(function () {
     // Manage items & status updates
     Route::apiResource('items', AdminItemController::class);
 
-    // Record new loan & update item status to 'Dipinjam'
+    // Record new loan & return borrowed item
     Route::post('/loans', [AdminLoanController::class, 'store']);
+    Route::post('/loans/{loanRecord}/return', [AdminLoanController::class, 'returnLoan']);
 
     // Manage organization news articles
     Route::apiResource('articles', AdminArticleController::class);

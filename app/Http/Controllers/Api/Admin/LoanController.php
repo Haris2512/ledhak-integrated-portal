@@ -9,6 +9,7 @@ use App\Models\Item;
 use App\Models\LoanRecord;
 use App\Services\GoogleSheetService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -69,5 +70,54 @@ class LoanController extends Controller
             'message' => 'Peminjaman berhasil dicatat, status barang diubah menjadi Dipinjam, dan log disinkronkan.',
             'data' => $loanRecord->load('item'),
         ], 201);
+    }
+
+    /**
+     * Mark a loan record as returned and restore item status to 'Tersedia'.
+     */
+    public function returnLoan(Request $request, LoanRecord $loanRecord): JsonResponse
+    {
+        if ($loanRecord->status === 'Returned') {
+            throw ValidationException::withMessages([
+                'loan' => ['Peminjaman barang ini sudah dikembalikan sebelumnya.'],
+            ]);
+        }
+
+        $item = $loanRecord->item;
+
+        DB::transaction(function () use ($loanRecord, $item, $request) {
+            // 1. Update loan record status
+            $loanRecord->update([
+                'status' => 'Returned',
+                'return_date' => now()->toDateString(),
+            ]);
+
+            // 2. Restore item status to 'Tersedia'
+            $item->update(['status' => 'Tersedia']);
+
+            // 3. Create audit log
+            InventoryLog::create([
+                'item_id' => $item->id,
+                'user_id' => $request->user()->id,
+                'action' => 'RETURNED',
+                'notes' => "Pengembalian barang dikonfirmasi oleh admin. Peminjam: {$loanRecord->borrower_name}.",
+            ]);
+        });
+
+        // Sync update to Google Sheets
+        GoogleSheetService::syncLoanRecord([
+            'item_code' => $item->item_code,
+            'item_name' => $item->name,
+            'borrower_name' => $loanRecord->borrower_name,
+            'borrower_phone' => $loanRecord->borrower_phone,
+            'loan_date' => $loanRecord->loan_date,
+            'return_date' => now()->toDateString(),
+            'status' => 'Returned',
+        ]);
+
+        return response()->json([
+            'message' => "Pengembalian barang {$item->name} berhasil dikonfirmasi.",
+            'data' => $loanRecord->fresh(['item']),
+        ]);
     }
 }

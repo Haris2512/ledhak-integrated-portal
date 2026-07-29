@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Article;
 use App\Models\Item;
+use App\Models\LoanRecord;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -95,6 +96,26 @@ class ApiEndpointsTest extends TestCase
         $this->assertDatabaseHas('inventory_logs', [
             'item_id' => $item->id,
             'action' => 'LOANED',
+        ]);
+
+        $loanRecordId = $loanResponse->json('data.id');
+
+        // Test return loan item
+        $returnResponse = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson("/api/admin/loans/{$loanRecordId}/return");
+
+        $returnResponse->assertStatus(200);
+        $this->assertDatabaseHas('items', [
+            'id' => $item->id,
+            'status' => 'Tersedia',
+        ]);
+        $this->assertDatabaseHas('loan_records', [
+            'id' => $loanRecordId,
+            'status' => 'Returned',
+        ]);
+        $this->assertDatabaseHas('inventory_logs', [
+            'item_id' => $item->id,
+            'action' => 'RETURNED',
         ]);
     }
 }

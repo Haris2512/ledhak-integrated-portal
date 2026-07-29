@@ -132,7 +132,7 @@ Dokumentasi REST API ini dirancang untuk memudahkan pengintegrasian antara **Fro
   }
   ```
 
-### 📦 Katalog Inventaris Publik
+### 📦 Katalog Inventaris Publik (77 Items)
 - **Endpoint**: `GET /api/public/inventory`
 - **Response Success (200 OK)**:
   ```json
@@ -142,12 +142,11 @@ Dokumentasi REST API ini dirancang untuk memudahkan pengintegrasian antara **Fro
       {
         "id": 1,
         "item_code": "INV-LDK-001",
-        "name": "Proyektor Epson EB-X400",
-        "category": "Elektronik",
-        "description": "Proyektor utama sekretariat...",
+        "name": "Spanduk lawan bicara baru",
+        "category": "Spanduk & Banner",
+        "description": "Jumlah ketersediaan: 7 Pcs. Perlengkapan resmi UKM LeDHaK UNHAS.",
         "status": "Tersedia",
-        "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=...",
-        "photo_path": "items/proyektor-ebx400.jpg"
+        "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=..."
       }
     ]
   }
@@ -161,8 +160,8 @@ Dokumentasi REST API ini dirancang untuk memudahkan pengintegrasian antara **Fro
     "data": {
       "id": 1,
       "item_code": "INV-LDK-001",
-      "name": "Proyektor Epson EB-X400",
-      "category": "Elektronik",
+      "name": "Spanduk lawan bicara baru",
+      "category": "Spanduk & Banner",
       "status": "Tersedia"
     }
   }
@@ -179,23 +178,9 @@ Dokumentasi REST API ini dirancang untuk memudahkan pengintegrasian antara **Fro
   ```json
   {
     "name": "Sound System Portable",
-    "category": "Elektronik",
+    "category": "Elektronik & Sound",
     "description": "Sound system outdoor",
     "status": "Tersedia"
-  }
-  ```
-- **Response Success (201 Created)**:
-  ```json
-  {
-    "message": "Barang inventaris berhasil dibuat.",
-    "data": {
-      "id": 3,
-      "item_code": "INV-LDK-9A8B7C",
-      "name": "Sound System Portable",
-      "category": "Elektronik",
-      "status": "Tersedia",
-      "qr_code_url": "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=..."
-    }
   }
   ```
 
@@ -221,35 +206,36 @@ Dokumentasi REST API ini dirancang untuk memudahkan pengintegrasian antara **Fro
       "item_id": 1,
       "borrower_name": "Ahmad Ramadhan",
       "borrower_phone": "081234567890",
-      "loan_date": "2026-07-29",
-      "return_date": "2026-08-01",
-      "status": "Active",
+      "status": "Active"
+    }
+  }
+  ```
+
+### 🔄 Konfirmasi Pengembalian Barang
+- **Endpoint**: `POST /api/admin/loans/{id}/return`
+- **Akses**: Protected (`auth:sanctum`)
+- **Response Success (200 OK)**:
+  ```json
+  {
+    "message": "Pengembalian barang Spanduk lawan bicara baru berhasil dikonfirmasi.",
+    "data": {
+      "id": 1,
+      "item_id": 1,
+      "status": "Returned",
+      "return_date": "2026-07-29",
       "item": {
         "id": 1,
         "item_code": "INV-LDK-001",
-        "name": "Proyektor Epson EB-X400",
-        "status": "Dipinjam"
+        "name": "Spanduk lawan bicara baru",
+        "status": "Tersedia"
       }
     }
   }
   ```
 
 ### 📝 Manajemen Artikel Organisasi (CRUD)
-- **Endpoint**:
-  - `GET /api/admin/articles`
-  - `POST /api/admin/articles`
-  - `GET /api/admin/articles/{id}`
-  - `PUT /api/admin/articles/{id}`
-  - `DELETE /api/admin/articles/{id}`
+- **Endpoint**: `GET|POST|PUT|DELETE /api/admin/articles`
 - **Akses**: Protected (`auth:sanctum`)
-- **Request Body (POST / PUT)**:
-  ```json
-  {
-    "title": "Pelatihan Debat Hukum Nasional 2026",
-    "content": "Isi lengkap pelatihan debat...",
-    "status": "Published"
-  }
-  ```
 
 ---
 
